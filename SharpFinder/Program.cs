@@ -281,7 +281,7 @@ namespace SharpFinder
                         // Create a file to write to.
                         using (StreamWriter sw = File.CreateText(outFile))
                         {
-                            sw.WriteLine("keyword, extensioN, file, readable, writeable");
+                            sw.WriteLine("keyword, extension, file, readable, writeable");
                         }
                     }
                 }
