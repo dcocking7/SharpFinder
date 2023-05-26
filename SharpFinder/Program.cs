@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -26,6 +27,8 @@ namespace SharpFinder
         public string[] extensions;
 
         public string input_file;
+
+        public string output_file;
 
         public string path;
 
@@ -55,6 +58,11 @@ namespace SharpFinder
             read_paths_from_file = true;
         }
 
+        public void set_output_file(string my_output_file)
+        {
+            output_file = String.Copy(my_output_file);
+        }
+
         public void set_path(string my_path)
         {
             path = String.Copy(my_path);
@@ -62,6 +70,7 @@ namespace SharpFinder
 
         public SFOptions(string my_path = ".\\",
             string my_input_file = "",
+            string my_output_file = "",
             string[] my_keywords = null,
             string[] my_extensions = null,
             bool my_exclude_hidden = false,
@@ -250,110 +259,128 @@ namespace SharpFinder
         }
         public static void SearchFileShare(string path, SFOptions options)
         {
-                    Console.WriteLine("[*] Searching for files in " + path);
-                    foreach (string file in DirWalk(path))
+            Console.WriteLine("[*] Searching for files in " + path);
+
+            foreach (string file in DirWalk(path))
+            {
+
+                bool keyword_match = false;
+                bool extension_match = false;
+                bool readable = false;
+                bool writeable = false;
+                bool acl_filter_match = false;
+                string keyword = "";
+                string extension = "";
+
+                if (!string.IsNullOrEmpty(options.output_file))
+                {
+                    string outFile = @options.output_file;
+                    // This text is added only once to the file.
+                    if (!File.Exists(outFile))
                     {
-
-                        bool keyword_match = false;
-                        bool extension_match = false;
-                        bool readable = false;
-                        bool writeable = false;
-                        bool acl_filter_match = false;
-                        string keyword = "";
-                        string extension = "";
-
-                        if (options.keywords == null)
+                        // Create a file to write to.
+                        using (StreamWriter sw = File.CreateText(outFile))
                         {
-                            keyword_match = true;
-                        }
-                        else
-                        {
-                            for (int i = 0; i < options.keywords.Length; i++)
-                            {
-                                if (file.ToLower().Contains(options.keywords[i].ToLower()))
-                                {
-                                    keyword_match = true;
-                                    keyword = options.keywords[i];
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (options.extensions == null)
-                        {
-                            extension_match = true;
-                        }
-                        else
-                        {
-                            for (int i = 0; i < options.extensions.Length; i++)
-                            {
-                                if (file.ToLower().EndsWith("."+options.extensions[i].ToLower()))
-                                {
-                                    extension_match = true;
-                                    extension = options.extensions[i];
-                                    break;
-                                }
-                            }
-                        }
-
-                        if ( !(keyword_match && extension_match) )
-                        {
-                            continue;
-                        }
-                        if (FileHasPermission(file, FileSystemRights.Read))
-                        {
-                            readable = true;
-                        }
-                        if (FileHasPermission(file, FileSystemRights.Write))
-                        {
-                            writeable = true;
-                        }
-                        if (options.acl_filter_readable && options.acl_filter_writeable)
-                        {
-                            if (options.acl_filter_mode_and && readable && writeable)
-                            {
-                                acl_filter_match = true;
-                            }
-                            else if (readable || writeable)
-                            {
-                                acl_filter_match = true;
-                            }
-                        }
-                        else if ( !(options.acl_filter_readable || options.acl_filter_writeable) )
-                        {
-
-                            acl_filter_match = true;
-                        }
-                        else if (options.acl_filter_readable && readable)
-                        {
-                            acl_filter_match = true;
-                        }
-                        else if (options.acl_filter_writeable && writeable)
-                        {
-                            acl_filter_match = true;
-                        }
-                        if ( !acl_filter_match )
-                        {
-                            continue;
-                        }
-                        if ( options.exclude_hidden && System.IO.File.GetAttributes(file).HasFlag(System.IO.FileAttributes.Hidden))
-                        {
-                            continue;
-                        }
-
-                        if (options.grepable)
-                        {
-                            Console.WriteLine("SharpFinder," + keyword + "," + extension + "," + file + "," + readable + "," + writeable);
-                        }
-                        else
-                        {
-                            Console.WriteLine(file);
-                            Console.WriteLine("\tKeyword: " + keyword);
-                            Console.WriteLine("\tExtension: " + extension);
-                            Console.WriteLine("\tWriteable: " + writeable);
-                            Console.WriteLine("\tReadable: " + readable);
+                            sw.WriteLine("keyword, extensioN, file, readable, writeable");
                         }
                     }
+                }
+
+
+                if (options.keywords == null)
+                {
+                    keyword_match = true;
+                }
+                else
+                {
+                    for (int i = 0; i < options.keywords.Length; i++)
+                    {
+                        if (file.ToLower().Contains(options.keywords[i].ToLower()))
+                        {
+                            keyword_match = true;
+                            keyword = options.keywords[i];
+                            break;
+                        }
+                    }
+                }
+
+                if (options.extensions == null)
+                {
+                    extension_match = true;
+                }
+                else
+                {
+                    for (int i = 0; i < options.extensions.Length; i++)
+                    {
+                        if (file.ToLower().EndsWith("."+options.extensions[i].ToLower()))
+                        {
+                            extension_match = true;
+                            extension = options.extensions[i];
+                            break;
+                        }
+                    }
+                }
+
+                if ( !(keyword_match && extension_match) )
+                {
+                    continue;
+                }
+                if (FileHasPermission(file, FileSystemRights.Read))
+                {
+                    readable = true;
+                }
+                if (FileHasPermission(file, FileSystemRights.Write))
+                {
+                    writeable = true;
+                }
+                if (options.acl_filter_readable && options.acl_filter_writeable)
+                {
+                    if (options.acl_filter_mode_and && readable && writeable)
+                    {
+                        acl_filter_match = true;
+                    }
+                    else if (readable || writeable)
+                    {
+                        acl_filter_match = true;
+                    }
+                }
+                else if ( !(options.acl_filter_readable || options.acl_filter_writeable) )
+                {
+
+                    acl_filter_match = true;
+                }
+                else if (options.acl_filter_readable && readable)
+                {
+                    acl_filter_match = true;
+                }
+                else if (options.acl_filter_writeable && writeable)
+                {
+                    acl_filter_match = true;
+                }
+                if ( !acl_filter_match )
+                {
+                    continue;
+                }
+                if ( options.exclude_hidden && System.IO.File.GetAttributes(file).HasFlag(System.IO.FileAttributes.Hidden))
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(options.output_file))
+                {
+                    string outFile = @options.output_file;
+                                   
+                    using (StreamWriter sw = File.AppendText(outFile))
+                    {
+                        sw.WriteLine(keyword + "," + extension + "," + file + "," + readable + "," + writeable);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine(keyword + "," + extension + "," + file + "," + readable + "," + writeable);
+                }
+
+            }
         }
 
 
@@ -375,6 +402,11 @@ namespace SharpFinder
                 {
                     string[] components = a.Split('=');
                     options.set_input_file(components[1]);
+                }
+                else if (a.StartsWith("--output-file="))
+                {
+                    string[] components = a.Split('=');
+                    options.set_output_file(components[1]);
                 }
                 else if (a.StartsWith("--keywords="))
                 {
